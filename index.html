@@ -361,3 +361,741 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- 
+                        <td class="p-2"><input type="number" class="w-12 bg-white/10 rounded text-center" value="${team.ga}" data-team="${i}" data-field="ga"></td>
+                        <td class="p-2 font-bold text-orange-400">${pts}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderAdminEvents() {
+            const container = document.getElementById('adminEventsList');
+            container.innerHTML = matchEvents.map((event, i) => `
+                <div class="flex items-center justify-between p-2 rounded bg-white/5 text-sm">
+                    <span>${event.minute}' - ${event.type === 'goal' ? '⚽ ' + event.player : event.type === 'card' ? '🟨 ' + event.player : event.type}</span>
+                    <button onclick="removeEvent(${i})" class="text-red-400 hover:text-red-300"><i class="fas fa-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function updateLiveMatch() {
+            liveMatch.home = document.getElementById('adminHomeTeam').value;
+            liveMatch.away = document.getElementById('adminAwayTeam').value;
+            liveMatch.homeScore = parseInt(document.getElementById('adminHomeScore').value);
+            liveMatch.awayScore = parseInt(document.getElementById('adminAwayScore').value);
+            liveMatch.time = document.getElementById('adminMatchTime').value + "'";
+            liveMatch.status = document.getElementById('adminMatchStatus').value;
+            
+            // Update UI
+            document.getElementById('homeTeamName').textContent = liveMatch.home;
+            document.getElementById('awayTeamName').textContent = liveMatch.away;
+            document.getElementById('homeScore').textContent = liveMatch.homeScore;
+            document.getElementById('awayScore').textContent = liveMatch.awayScore;
+            document.getElementById('matchTime').textContent = liveMatch.time;
+            
+            const homeTeam = teams.find(t => t.name === liveMatch.home);
+            const awayTeam = teams.find(t => t.name === liveMatch.away);
+            document.getElementById('homeTeamLogo').className = `team-logo mx-auto mb-3 bg-gradient-to-br ${homeTeam.color} text-2xl`;
+            document.getElementById('homeTeamLogo').textContent = homeTeam.abbr;
+            document.getElementById('awayTeamLogo').className = `team-logo mx-auto mb-3 bg-gradient-to-br ${awayTeam.color} text-2xl`;
+            document.getElementById('awayTeamLogo').textContent = awayTeam.abbr;
+            
+            showToast('Live match updated!');
+            renderFixtures();
+        }
+
+        function addGoalEvent() {
+            const scorer = document.getElementById('goalScorer').value;
+            const team = document.getElementById('goalTeam').value;
+            const minute = parseInt(document.getElementById('goalMinute').value);
+            
+            if(!scorer || !minute) {
+                showToast('Please fill all fields!');
+                return;
+            }
+            
+            matchEvents.unshift({
+                type: 'goal',
+                minute: minute,
+                player: scorer,
+                team: team
+            });
+            
+            // Update score
+            if(team === 'home') {
+                liveMatch.homeScore++;
+                document.getElementById('adminHomeScore').value = liveMatch.homeScore;
+            } else {
+                liveMatch.awayScore++;
+                document.getElementById('adminAwayScore').value = liveMatch.awayScore;
+            }
+            
+            updateLiveMatch();
+            renderAdminEvents();
+            renderTimeline();
+            
+            // Clear inputs
+            document.getElementById('goalScorer').value = '';
+            document.getElementById('goalMinute').value = '';
+            
+            showToast('Goal added! ⚽');
+        }
+
+        function removeEvent(index) {
+            matchEvents.splice(index, 1);
+            renderAdminEvents();
+            renderTimeline();
+        }
+
+        function saveLeagueTable() {
+            const inputs = document.querySelectorAll('#adminLeagueTable input');
+            inputs.forEach(input => {
+                const teamIndex = parseInt(input.dataset.team);
+                const field = input.dataset.field;
+                teams[teamIndex][field] = parseInt(input.value) || 0;
+            });
+            
+            renderLeagueTable();
+            renderTeams();
+            showToast('League table saved!');
+        }
+
+        function renderTimeline() {
+            const container = document.getElementById('matchTimeline');
+            container.innerHTML = matchEvents.map(event => {
+                if(event.type === 'goal') {
+                    const teamName = event.team === 'home' ? liveMatch.home : liveMatch.away;
+                    return `
+                        <div class="goal-event p-4 rounded-xl flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-400 font-bold">${event.minute}'</div>
+                                <div>
+                                    <p class="font-bold">⚽ GOAL! ${event.player}</p>
+                                    <p class="text-sm text-gray-400">${teamName}</p>
+                                </div>
+                            </div>
+                            <button onclick="shareEvent('${event.player} scored at ${event.minute}\\'! 🔥')" class="px-3 py-1 rounded-full bg-white/10 text-xs hover:bg-white/20">
+                                <i class="fas fa-share-alt"></i>
+                            </button>
+                        </div>
+                    `;
+                } else if(event.type === 'card') {
+                    return `
+                        <div class="p-4 rounded-xl bg-white/5 border-l-4 border-yellow-500 flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 font-bold">${event.minute}'</div>
+                                <div>
+                                    <p class="font-bold">🟨 Yellow Card</p>
+                                    <p class="text-sm text-gray-400">${event.player}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else if(event.type === 'halftime') {
+                    return `
+                        <div class="p-4 rounded-xl bg-white/10 text-center">
+                            <p class="font-bold text-gray-400">⏸️ HALF TIME</p>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="p-4 rounded-xl bg-white/5 text-center">
+                            <p class="font-bold text-gray-400">🏁 KICK OFF</p>
+                        </div>
+                    `;
+                }
+            }).join('');
+        }
+
+        // ================= INTERACTION FEATURES =================
+        
+        function filterFixtures(type) {
+            renderFixtures(type);
+        }
+
+        function sendReaction(emoji) {
+            // Create floating emoji
+            const float = document.createElement('div');
+            float.className = 'floating-emoji';
+            float.textContent = emoji;
+            float.style.left = Math.random() * window.innerWidth + 'px';
+            float.style.bottom = '100px';
+            document.body.appendChild(float);
+            
+            setTimeout(() => float.remove(), 2000);
+            
+            // Update count
+            const counts = document.getElementById('reactionCounts');
+            const current = parseInt(counts.querySelector(`span:nth-child(${['🔥','⚽','👏','😱','😡','🍿'].indexOf(emoji)+1}`).textContent.split(' ')[1]);
+            counts.querySelector(`span:nth-child(${['🔥','⚽','👏','😱','😡','🍿'].indexOf(emoji)+1}`).textContent = `${emoji} ${current + 1}`;
+            
+            showToast(`Sent ${emoji}!`);
+        }
+
+        function sendChat() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if(!message) return;
+            
+            const container = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = 'chat-message flex items-start space-x-3';
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-gradient-to-r from-orange-500 to-yellow-400 flex items-center justify-center text-xs font-bold flex-shrink-0">ME</div>
+                <div class="flex-1">
+                    <div class="flex items-baseline space-x-2">
+                        <span class="font-bold text-sm text-orange-400">You</span>
+                        <span class="text-xs text-gray-500">Just now</span>
+                    </div>
+                    <p class="text-sm text-gray-300">${message}</p>
+                </div>
+            `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+            input.value = '';
+        }
+
+        function quickPredict(result) {
+            const predictions = {
+                home: `${liveMatch.home} Win`,
+                draw: 'Draw',
+                away: `${liveMatch.away} Win`
+            };
+            showToast(`Predicted: ${predictions[result]}! Share to lock in.`);
+        }
+
+        function submitPrediction() {
+            const home = document.getElementById('myHomeScore').value;
+            const away = document.getElementById('myAwayScore').value;
+            showToast(`Prediction locked: ${home}-${away}! Good luck! 🎯`);
+        }
+
+        // ================= SHARING FUNCTIONS =================
+        
+        function shareMatch() {
+            const text = `🔴 LIVE: ${liveMatch.home} ${liveMatch.homeScore}-${liveMatch.awayScore} ${liveMatch.away} (${liveMatch.time}) - Watch on Lamu Sports Hub!`;
+            shareContent(text);
+        }
+
+        function shareEvent(text) {
+            shareContent(`⚽ ${text} - Lamu Sports Hub`);
+        }
+
+        function shareTimeline() {
+            const text = `📊 Match Timeline: ${liveMatch.home} vs ${liveMatch.away} - ${matchEvents.length} events including ${matchEvents.filter(e => e.type === 'goal').length} goals!`;
+            shareContent(text);
+        }
+
+        function shareMatchResult(home, away, homeScore, awayScore) {
+            const text = `🏁 FULL TIME: ${home} ${homeScore}-${awayScore} ${away} - Lamu County League results!`;
+            shareContent(text);
+        }
+
+        function shareTable() {
+            const top3 = [...teams].sort((a,b) => (b.won*3+b.drawn) - (a.won*3+a.drawn)).slice(0,3);
+            const text = `📈 Lamu County League Standings:\n1. ${top3[0].name} (${top3[0].won*3+top3[0].drawn} pts)\n2. ${top3[1].name} (${top3[1].won*3+top3[1].drawn} pts)\n3. ${top3[2].name} (${top3[2].won*3+top3[2].drawn} pts)\n\nCheck full table on Lamu Sports Hub!`;
+            shareContent(text);
+        }
+
+        function shareTeam(teamName) {
+            const team = teams.find(t => t.name === teamName);
+            const text = `⚽ ${team.name} - ${team.won} wins, ${team.drawn} draws, ${team.lost} losses. ${team.gf} goals scored! Support your team on Lamu Sports Hub!`;
+            shareContent(text);
+        }
+
+        function sharePrediction() {
+            const home = document.getElementById('myHomeScore').value;
+            const away = document.getElementById('myAwayScore').value;
+            const text = `🔮 My Prediction: ${liveMatch.home} ${home}-${away} ${liveMatch.away}\n\nThink I'm right? Challenge me on Lamu Sports Hub!`;
+            shareContent(text);
+        }
+
+        function shareAchievement(text) {
+            shareContent(`🏆 ${text}\n\nJoin me on Lamu Sports Hub - the home of Lamu football!`);
+        }
+
+        function shareContent(text) {
+            if(navigator.share) {
+                navigator.share({
+                    title: 'Lamu Sports Hub',
+                    text: text,
+                    url: window.location.href
+                });
+            } else {
+                // Fallback - copy to clipboard
+                navigator.clipboard.writeText(text + ' ' + window.location.href);
+                showToast('Copied to clipboard! Share anywhere.');
+            }
+        }
+
+        // ================= UTILITIES =================
+        
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function startLiveSimulation() {
+            // Simulate live match time progression
+            setInterval(() => {
+                if(liveMatch.status === 'live') {
+                    let currentMin = parseInt(liveMatch.time) || 0;
+                    if(currentMin < 90) {
+                        currentMin++;
+                        liveMatch.time = currentMin + "'";
+                        document.getElementById('matchTime').textContent = liveMatch.time;
+                        
+                        // Randomly update watching count
+                        const watching = 340 + Math.floor(Math.random() * 20);
+                        document.getElementById('watchingCount').textContent = watching + ' watching';
+                    }
+                }
+            }, 60000); // Update every minute
+            
+            // Simulate random chat messages
+            const randomMessages = [
+                { user: 'Hassan_M', msg: 'Great tackle! 💪', color: 'from-green-500 to-teal-500' },
+                { user: 'Amina_K', msg: 'Come on Manda City! 🔵', color: 'from-blue-500 to-cyan-500' },
+                { user: 'Omar_J', msg: 'That was close! 😱', color: 'from-orange-500 to-red-500' },
+                { user: 'Saida_A', msg: 'Best match of the season! 🔥', color: 'from-pink-500 to-purple-500' }
+            ];
+            
+            setInterval(() => {
+                if(Math.random() > 0.7 && currentSection === 'dashboard') {
+                    const msg = randomMessages[Math.floor(Math.random() * randomMessages.length)];
+                    const container = document.getElementById('chatMessages');
+                    const div = document.createElement('div');
+                    div.className = 'chat-message flex items-start space-x-3';
+                    div.innerHTML = `
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-r ${msg.color} flex items-center justify-center text-xs font-bold flex-shrink-0">${msg.user.substring(0,2)}</div>
+                        <div class="flex-1">
+                            <div class="flex items-baseline space-x-2">
+                                <span class="font-bold text-sm text-gray-300">${msg.user}</span>
+                                <span class="text-xs text-gray-500">${liveMatch.time}</span>
+                            </div>
+                            <p class="text-sm text-gray-300">${msg.msg}</p>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                    container.scrollTop = container.scrollHeight;
+                }
+            }, 15000); // Random message every 15 seconds
+        }
+
+        // Initialize timeline on load
+        renderTimeline();
+    </script>
+</body>
+            </html>
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lamu Sports Hub - FKF Lamu County League</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ocean-deep: #0B1B2D;
+            --coral-orange: #FF6B4A;
+            --sand-beige: #F5E6D3;
+            --lagoon-teal: #2A9D8F;
+            --sunset-gold: #E9C46A;
+            --live-red: #FF2D55;
+        }
+        
+        * { scrollbar-width: thin; scrollbar-color: rgba(255,107,74,0.3) transparent; }
+        *::-webkit-scrollbar { width: 6px; }
+        *::-webkit-scrollbar-thumb { background: rgba(255,107,74,0.3); border-radius: 3px; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--ocean-deep);
+            color: #fff;
+            overflow-x: hidden;
+        }
+        
+        h1, h2, h3, h4, h5, h6 { font-family: 'Space Grotesk', sans-serif; }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--coral-orange), var(--sunset-gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .swahili-pattern {
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23FF6B4A' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        
+        .live-pulse {
+            animation: pulse-live 2s infinite;
+            box-shadow: 0 0 20px rgba(255, 45, 85, 0.5);
+        }
+        
+        @keyframes pulse-live {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+        }
+        
+        .match-card { transition: all 0.3s ease; }
+        .match-card:hover { transform: translateY(-2px); box-shadow: 0 20px 40px rgba(255, 107, 74, 0.15); }
+        
+        .reaction-btn {
+            transition: all 0.2s;
+            transform: scale(1);
+        }
+        .reaction-btn:active { transform: scale(1.3); }
+        .reaction-btn:hover { transform: scale(1.1); background: rgba(255,107,74,0.2); }
+        
+        .chat-message {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .prediction-bar {
+            background: linear-gradient(90deg, var(--coral-orange) var(--percent), rgba(255,255,255,0.1) var(--percent));
+        }
+        
+        .share-btn {
+            background: linear-gradient(135deg, #1DA1F2, #0d8ecf);
+            transition: all 0.3s;
+        }
+        .share-btn:hover { transform: scale(1.05); box-shadow: 0 5px 20px rgba(29, 161, 242, 0.4); }
+        
+        .admin-panel {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(11, 27, 45, 0.98);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .admin-panel.active { display: block; }
+        
+        .nav-item {
+            position: relative;
+            transition: all 0.3s;
+        }
+        
+        .nav-item::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 2px;
+            background: var(--coral-orange);
+            transition: width 0.3s;
+        }
+        
+        .nav-item.active::after { width: 60%; }
+        .nav-item.active { color: var(--coral-orange); }
+        
+        .team-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .goal-event {
+            border-left: 3px solid var(--coral-orange);
+            background: linear-gradient(90deg, rgba(255,107,74,0.1), transparent);
+        }
+        
+        .prediction-card {
+            background: linear-gradient(135deg, rgba(255,107,74,0.1), rgba(233,196,106,0.05));
+            border: 1px solid rgba(255,107,74,0.2);
+        }
+        
+        .floating-emoji {
+            position: fixed;
+            pointer-events: none;
+            animation: floatUp 2s ease-out forwards;
+            font-size: 24px;
+            z-index: 9999;
+        }
+        
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-100px) scale(1.5); }
+        }
+        
+        .leaderboard-item {
+            transition: all 0.3s;
+        }
+        .leaderboard-item:hover {
+            background: rgba(255,107,74,0.1);
+            transform: translateX(5px);
+        }
+        
+        .badge {
+            background: linear-gradient(135deg, var(--sunset-gold), var(--coral-orange));
+            color: #000;
+            font-weight: bold;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(255,107,74,0.95);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: 600;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 9998;
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body class="swahili-pattern min-h-screen pb-20 md:pb-0">
+
+    <!-- Admin Panel -->
+    <div id="adminPanel" class="admin-panel">
+        <div class="max-w-4xl mx-auto p-6">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold gradient-text">Officials Control Center</h2>
+                <button onclick="toggleAdmin()" class="px-4 py-2 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30">
+                    <i class="fas fa-times mr-2"></i>Close
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Live Match Editor -->
+                <div class="glass-panel rounded-2xl p-6">
+                    <h3 class="text-xl font-bold mb-4 text-orange-400"><i class="fas fa-edit mr-2"></i>Edit Live Match</h3>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-sm text-gray-400">Home Team</label>
+                                <select id="adminHomeTeam" class="w-full mt-1 p-3 rounded-lg bg-white/10 border border-white/20 text-white">
+                                    <option value="">Select Team</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-400">Away Team</label>
+                                <select id="adminAwayTeam" class="w-full mt-1 p-3 rounded-lg bg-white/10 border border-white/20 text-white">
+                                    <option value="">Select Team</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="text-sm text-gray-400">Home Score</label>
+                                <input type="number" id="adminHomeScore" class="w-full mt-1 p-3 rounded-lg bg-white/10 border border-white/20 text-white text-center text-2xl" value="0">
+                            </div>
+                            <div class="flex items-end justify-center pb-3 text-2xl">-</div>
+                            <div>
+                                <label class="text-sm text-gray-400">Away Score</label>
+                                <input type="number" id="adminAwayScore" class="w-full mt-1 p-3 rounded-lg bg-white/10 border border-white/20 text-white text-center text-2xl" value="0">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-400">Match Time (minutes)</label>
+                            <input type="number" id="adminMatchTime" class="w-full mt-1 p-3 rounded-lg bg-white/10 border border-white/20 text-white" value="0" max="90">
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-400">Match Status</label>
+                            <select id="adminMatchStatus" class="w-full mt-1 p-3 rounded-lg bg-white/10 border border-white/20 text-white">
+                                <option value="live">🔴 Live</option>
+                                <option value="ht">⏸️ Half Time</option>
+                                <option value="ft">🏁 Full Time</option>
+                                <option value="upcoming">⏰ Upcoming</option>
+                            </select>
+                        </div>
+                        <button onclick="updateLiveMatch()" class="w-full py-3 rounded-lg bg-orange-500 text-white font-bold hover:bg-orange-600 transition-colors">
+                            Update Live Match
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Goal Events -->
+                <div class="glass-panel rounded-2xl p-6">
+                    <h3 class="text-xl font-bold mb-4 text-orange-400"><i class="fas fa-futbol mr-2"></i>Add Goal Event</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-sm text-gray-400">Scorer Name</label>
+                            <input type="text" id="goalScorer" placeholder="e.g., Ali Ahmed" class="w-full mt-1 p-3 rounded-lg bg-white/10 border border-white/20 text-white">
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-400">Team</label>
+                            <select id="goalTeam" class="w-full mt-1 p-3 rounded-lg bg-white/10 border border-white/20 text-white">
+                                <option value="home">Home Team</option>
+                                <option value="away">Away Team</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-400">Minute</label>
+                            <input type="number" id="goalMinute" placeholder="54" class="w-full mt-1 p-3 rounded-lg bg-white/10 border border-white/20 text-white">
+                        </div>
+                        <button onclick="addGoalEvent()" class="w-full py-3 rounded-lg bg-green-500 text-white font-bold hover:bg-green-600 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>Add Goal
+                        </button>
+                    </div>
+                    
+                    <div class="mt-6 pt-6 border-t border-white/10">
+                        <h4 class="font-bold mb-3">Recent Events</h4>
+                        <div id="adminEventsList" class="space-y-2 max-h-40 overflow-y-auto"></div>
+                    </div>
+                </div>
+
+                <!-- League Table Editor -->
+                <div class="glass-panel rounded-2xl p-6 md:col-span-2">
+                    <h3 class="text-xl font-bold mb-4 text-orange-400"><i class="fas fa-table mr-2"></i>Update League Table</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-gray-400 border-b border-white/10">
+                                    <th class="p-2 text-left">Team</th>
+                                    <th class="p-2">P</th>
+                                    <th class="p-2">W</th>
+                                    <th class="p-2">D</th>
+                                    <th class="p-2">L</th>
+                                    <th class="p-2">GF</th>
+                                    <th class="p-2">GA</th>
+                                    <th class="p-2">Pts</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminLeagueTable"></tbody>
+                        </table>
+                    </div>
+                    <button onclick="saveLeagueTable()" class="mt-4 w-full py-3 rounded-lg bg-blue-500 text-white font-bold hover:bg-blue-600 transition-colors">
+                        Save League Table
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 glass-panel border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="showSection('dashboard')">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-yellow-400 flex items-center justify-center">
+                        <i class="fas fa-futbol text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight">Lamu Sports Hub</h1>
+                        <p class="text-xs text-gray-400">FKF Lamu County League</p>
+                    </div>
+                </div>
+                
+                <div class="hidden md:flex items-center space-x-1">
+                    <button onclick="showSection('dashboard')" class="nav-item active px-4 py-2 rounded-lg text-sm font-medium" data-section="dashboard">
+                        <i class="fas fa-home mr-2"></i>Live
+                    </button>
+                    <button onclick="showSection('matches')" class="nav-item px-4 py-2 rounded-lg text-sm font-medium" data-section="matches">
+                        <i class="fas fa-calendar-alt mr-2"></i>Fixtures
+                    </button>
+                    <button onclick="showSection('table')" class="nav-item px-4 py-2 rounded-lg text-sm font-medium" data-section="table">
+                        <i class="fas fa-table mr-2"></i>Table
+                    </button>
+                    <button onclick="showSection('predictions')" class="nav-item px-4 py-2 rounded-lg text-sm font-medium" data-section="predictions">
+                        <i class="fas fa-chart-line mr-2"></i>Predict
+                    </button>
+                    <button onclick="showSection('teams')" class="nav-item px-4 py-2 rounded-lg text-sm font-medium" data-section="teams">
+                        <i class="fas fa-shield-alt mr-2"></i>Teams
+                    </button>
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <button onclick="toggleAdmin()" class="hidden md:flex items-center px-3 py-1.5 rounded-full bg-white/10 text-xs hover:bg-white/20 transition-colors">
+                        <i class="fas fa-lock mr-1"></i>Officials
+                    </button>
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-r from-teal-500 to-blue-500 flex items-center justify-center text-sm font-bold cursor-pointer" onclick="showSection('profile')">
+                        ME
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="pt-20 pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+
+        <!-- DASHBOARD SECTION -->
+        <section id="dashboard" class="space-y-6">
+            
+            <!-- LIVE MATCH CARD -->
+            <div id="liveMatchContainer" class="glass-panel rounded-3xl p-6 md:p-8 relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-red-600/20 via-orange-600/10 to-transparent"></div>
+                
+                <div class="relative z-10 flex items-center justify-between mb-6">
+                    <div class="flex items-center space-x-3">
+                        <span class="flex items-center space-x-2 px-4 py-2 rounded-full bg-red-500/20 border border-red-500/50">
+                            <span class="w-3 h-3 bg-red-500 rounded-full live-pulse"></span>
+                            <span class="text-red-400 font-bold text-sm tracking-wider">LIVE NOW</span>
+                        </span>
+                        <span class="text-gray-400 text-sm" id="matchVenue">Manda Grounds • Zone A</span>
+                    </div>
+                    <button onclick="shareMatch()" class="share-btn px-4 py-2 rounded-full text-white text-sm font-bold flex items-center">
+                        <i class="fas fa-share-alt mr-2"></i>Share Match
+                    </button>
+                </div>
+
+                <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div class="flex-1 text-center">
+                        <div id="homeTeamLogo" class="team-logo mx-auto mb-3 bg-gradient-to-br from-blue-600 to-blue-800 text-2xl">MC</div>
+                        <h3 id="homeTeamName" class="text-2xl font-bold mb-1">Manda City</h3>
+                        <p class="text-sm text-gray-400">Home</p>
+                    </div>
+
+                    <div class="flex flex-col items-center px-8">
+                        <div class="flex items-center space-x-4 mb-2">
+                            <span id="homeScore" class="text-6xl md:text-7xl font-bold gradient-text">2</span>
+                            <span class="text-4xl text-gray-500">-</span>
+                            <span id="awayScore" class="text-6xl md:text-7xl font-bold text-white">1</span>
+                        </div>
+                        <div id="matchTime" class="px-4 py-1 rounded-full bg-white/10 text-orange-400 font-bold text-lg">74'</div>
+                        <div class="flex items-center space-x-2 mt-3 text-sm text-gray-400">
+                            <i class="fas fa-eye"></i>
+                            <span id="watchingCount">342 watching</span>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 text-center">
+                        <div id="awayTeamLogo" class="team-logo mx-auto mb-3 bg-gradient-to-br from-orange-600 to-red-600 text-2xl">SF</div>
+                        <h3 id="awayTeamName" class="text-2xl font-bold mb-1">Sportlight FC</h3>
+                        <p class="text-sm text-gray-400">Away</p>
+                    </div>
+                </div>
+
+                <!-- Reactions Bar -->
+                <div class="relative z-10 mt-8 pt-6 border-t border-white/10">
+ 
