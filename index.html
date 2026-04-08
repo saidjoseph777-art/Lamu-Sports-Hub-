@@ -1887,3 +1887,426 @@
             <div class="glass-panel rounded-2xl p-4 mb-4">
                 <h3 class="font-bold mb-3">Team Form Guide (Last 5)</h3>
                 <div id="t
+, cards: 4, rating: 7.0, followers: 29 },
+            { name: "Saida Mohammed", team: "Team Wazee", age: 23, height: "1.72m", foot: "Right", value: "€9K", matches: 11, goals: 4, assists: 3, cards: 1, rating: 7.3, followers: 34 },
+            { name: "Yusuf Ibrahim", team: "Deep Sea FC", age: 25, height: "1.80m", foot: "Left", value: "€7K", matches: 10, goals: 3, assists: 2, cards: 2, rating: 6.9, followers: 22 },
+            { name: "Amina Omar", team: "Fayaz Bakers FC", age: 21, height: "1.70m", foot: "Right", value: "€6K", matches: 9, goals: 2, assists: 4, cards: 0, rating: 7.1, followers: 41 },
+            { name: "Khalid Ali", team: "Monaco FC", age: 27, height: "1.83m", foot: "Right", value: "€8K", matches: 11, goals: 4, assists: 2, cards: 3, rating: 7.0, followers: 18 },
+            { name: "Zainab Hussein", team: "Kashmir City", age: 19, height: "1.65m", foot: "Left", value: "€5K", matches: 8, goals: 3, assists: 1, cards: 1, rating: 6.8, followers: 56 }
+        ];
+
+        let news = [
+            { id: 1, title: "Governor's Cup 2026 Registration Open", content: "Teams can now register for the annual Governor's Cup tournament. Deadline: April 15, 2026.", image: null, date: "2026-04-05", author: "Official", type: "official", reactions: { fire: 23, like: 45 } },
+            { id: 2, title: "Manda City Unbeaten in 8 Matches", content: "The league leaders continue their impressive run with another victory over the weekend.", image: null, date: "2026-04-03", author: "Reporter", type: "community", reactions: { fire: 67, like: 89 } },
+            { id: 3, title: "New Training Facility at Kibaki Grounds", content: "Lamu Youth Alliance announces upgraded facilities for all registered teams.", image: null, date: "2026-04-01", author: "Official", type: "official", reactions: { fire: 12, like: 34 } }
+        ];
+
+        let videos = [
+            { id: 1, title: "Manda City vs Sportlight - Match Highlights", category: "highlights", url: "https://youtube.com/embed/placeholder1", thumbnail: null },
+            { id: 2, title: "Top 10 Goals of the Season", category: "goals", url: "https://youtube.com/embed/placeholder2", thumbnail: null },
+            { id: 3, title: "Coach Interview: Preparing for Finals", category: "interviews", url: "https://youtube.com/embed/placeholder3", thumbnail: null },
+            { id: 4, title: "Live: Training Session at Manda Grounds", category: "live", url: null, isLive: true, thumbnail: null }
+        ];
+
+        let referees = [
+            { name: "Abdalla Omar", contact: "0705123456", matches: 15 },
+            { name: "Fatma Hussein", contact: "0705234567", matches: 12 },
+            { name: "Mohammed Ali", contact: "0705345678", matches: 18 }
+        ];
+
+        let suggestions = [];
+        let notifications = [];
+        let starredMatches = [];
+        let joinedMatches = [];
+        let followingPlayers = [];
+        let favoriteTeams = [];
+        let currentUser = null;
+        let isOfficial = false;
+        let officialCode = "2026LAMU"; // Changeable from admin panel
+        let currentMatchday = null;
+
+        // ================= INITIALIZATION =================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFromStorage();
+            migrateData();
+            initApp();
+            startLiveSimulation();
+            checkInstallPrompt();
+        });
+
+        function migrateData() {
+            // Ensure all 20 teams exist
+            const savedTeams = localStorage.getItem('lamu_teams');
+            if (!savedTeams) {
+                localStorage.setItem('lamu_teams', JSON.stringify(teams));
+            }
+            
+            // Clear demo notifications on first load
+            if (!localStorage.getItem('lamu_notifications_cleared')) {
+                notifications = [];
+                localStorage.setItem('lamu_notifications_cleared', 'true');
+            }
+            
+            // Mark past fixtures as played
+            const today = new Date('2026-04-08');
+            allFixtures.forEach(f => {
+                const matchDate = new Date(f.date);
+                if (matchDate < today && f.status === 'upcoming') {
+                    f.status = 'finished';
+                    f.time = 'FT';
+                }
+            });
+        }
+
+        function loadFromStorage() {
+            const saved = localStorage.getItem('lamu_user');
+            if (saved) {
+                currentUser = JSON.parse(saved);
+                hideLoginModal();
+                updateUIForUser();
+            }
+            
+            const savedStarred = localStorage.getItem('lamu_starred_matches');
+            if (savedStarred) starredMatches = JSON.parse(savedStarred);
+            
+            const savedJoined = localStorage.getItem('lamu_joined_matches');
+            if (savedJoined) joinedMatches = JSON.parse(savedJoined);
+            
+            const savedFollowing = localStorage.getItem('lamu_following_players');
+            if (savedFollowing) followingPlayers = JSON.parse(savedFollowing);
+            
+            const savedFavTeams = localStorage.getItem('lamu_favorite_teams');
+            if (savedFavTeams) favoriteTeams = JSON.parse(savedFavTeams);
+            
+            const savedSuggestions = localStorage.getItem('lamu_suggestions');
+            if (savedSuggestions) suggestions = JSON.parse(savedSuggestions);
+        }
+
+        function saveToStorage() {
+            if (currentUser) {
+                localStorage.setItem('lamu_user', JSON.stringify(currentUser));
+            }
+            localStorage.setItem('lamu_starred_matches', JSON.stringify(starredMatches));
+            localStorage.setItem('lamu_joined_matches', JSON.stringify(joinedMatches));
+            localStorage.setItem('lamu_following_players', JSON.stringify(followingPlayers));
+            localStorage.setItem('lamu_favorite_teams', JSON.stringify(favoriteTeams));
+            localStorage.setItem('lamu_suggestions', JSON.stringify(suggestions));
+        }
+
+        function initApp() {
+            renderTeams();
+            renderFixtures();
+            renderLeagueTable();
+            renderPlayers();
+            renderNews();
+            renderVideos();
+            renderReferees();
+            renderLeaderboards();
+            populateSelects();
+            updateNotificationsBadge();
+            
+            // Setup admin panel selects
+            populateAdminSelects();
+        }
+
+        // ================= AUTHENTICATION =================
+
+        function googleLogin() {
+            // Simulated Google login for static site
+            currentUser = {
+                name: "Google User",
+                email: "user@gmail.com",
+                role: "fan",
+                authMethod: "google",
+                loginTime: new Date().toISOString()
+            };
+            saveToStorage();
+            hideLoginModal();
+            updateUIForUser();
+            showToast('Welcome! Signed in with Google');
+        }
+
+        function pinLogin() {
+            const name = document.getElementById('pinName').value;
+            const role = document.getElementById('pinRole').value;
+            const pin = document.getElementById('pinCode').value;
+            
+            if (!name || pin.length !== 4) {
+                showToast('Please enter name and 4-digit PIN');
+                return;
+            }
+            
+            currentUser = {
+                name: name,
+                role: role,
+                authMethod: "pin",
+                pin: pin,
+                loginTime: new Date().toISOString()
+            };
+            saveToStorage();
+            hideLoginModal();
+            showPinWarning();
+            updateUIForUser();
+        }
+
+        function hideLoginModal() {
+            document.getElementById('loginModal').classList.remove('active');
+        }
+
+        function showPinWarning() {
+            if (!localStorage.getItem('lamu_pin_warning_shown')) {
+                document.getElementById('pinWarningModal').classList.add('active');
+                localStorage.setItem('lamu_pin_warning_shown', 'true');
+            }
+        }
+
+        function closePinWarning() {
+            document.getElementById('pinWarningModal').classList.remove('active');
+            showToast(`Welcome, ${currentUser.name}!`);
+        }
+
+        function logout() {
+            currentUser = null;
+            isOfficial = false;
+            localStorage.removeItem('lamu_user');
+            location.reload();
+        }
+
+        function updateUIForUser() {
+            if (!currentUser) return;
+            
+            document.getElementById('userInitials').textContent = currentUser.name.substring(0, 2).toUpperCase();
+            document.getElementById('profileInitials').textContent = currentUser.name.substring(0, 2).toUpperCase();
+            document.getElementById('profileDisplayName').textContent = currentUser.name;
+            document.getElementById('profileEmail').textContent = currentUser.email || 'No email';
+            document.getElementById('profileRoleBadge').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+            
+            if (currentUser.authMethod === 'google') {
+                document.getElementById('authMethodIcon').className = 'fab fa-google text-blue-400';
+                document.getElementById('authMethodText').textContent = 'Google (Cloud Sync)';
+            }
+            
+            // Update settings fields
+            document.getElementById('settingsName').value = currentUser.name;
+            document.getElementById('settingsRole').value = currentUser.role;
+            
+            // Show quick edit for officials
+            if (isOfficial) {
+                document.getElementById('quickEditBtn').classList.add('visible');
+            }
+        }
+
+        // ================= OFFICIAL ACCESS =================
+
+        function openOfficialModal() {
+            document.getElementById('officialModal').classList.add('active');
+        }
+
+        function closeOfficialModal() {
+            document.getElementById('officialModal').classList.remove('active');
+        }
+
+        function verifyOfficial() {
+            const code = document.getElementById('officialCode').value;
+            if (code === officialCode) {
+                isOfficial = true;
+                closeOfficialModal();
+                toggleAdmin();
+                document.getElementById('quickEditBtn').classList.add('visible');
+                showToast('Official access granted!');
+            } else {
+                showToast('Invalid access code');
+            }
+        }
+
+        function toggleAdmin() {
+            const panel = document.getElementById('adminPanel');
+            panel.classList.toggle('active');
+            if (panel.classList.contains('active')) {
+                renderAdminSuggestions();
+            }
+        }
+
+        function toggleQuickEdit() {
+            // Quick inline editing based on current page
+            if (currentSection === 'teams') {
+                showSection('teams');
+                showToast('Quick Edit: Click any team to edit');
+            } else if (currentSection === 'players') {
+                showSection('players');
+                showToast('Quick Edit: Click any player to edit');
+            } else if (currentSection === 'matches') {
+                showSection('matches');
+                showToast('Quick Edit mode active');
+            } else if (currentSection === 'standings') {
+                showSection('standings');
+                showToast('Quick Edit: Table cells editable');
+            }
+        }
+
+        // ================= NAVIGATION =================
+
+        function showSection(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('main > section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            
+            // Show selected
+            const target = document.getElementById(sectionId);
+            if (target) {
+                target.classList.remove('hidden');
+                currentSection = sectionId;
+            }
+            
+            // Update nav
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active', 'text-orange-400');
+                item.classList.add('text-gray-400');
+                if (item.dataset.section === sectionId) {
+                    item.classList.add('active', 'text-orange-400');
+                    item.classList.remove('text-gray-400');
+                }
+            });
+            
+            document.querySelectorAll('[data-mobile]').forEach(item => {
+                item.classList.remove('text-orange-400');
+                item.classList.add('text-gray-400');
+                if (item.dataset.mobile === sectionId) {
+                    item.classList.add('text-orange-400');
+                    item.classList.remove('text-gray-400');
+                }
+            });
+            
+            // Hide menus
+            document.getElementById('moreMenu').classList.add('hidden');
+            document.getElementById('mobileMoreMenu').classList.add('hidden');
+            document.getElementById('profileMenu').classList.add('hidden');
+            
+            window.scrollTo(0, 0);
+            
+            // Section-specific init
+            if (sectionId === 'standings') renderFullLeagueTable();
+            if (sectionId === 'leaderboard') renderLeaderboards();
+        }
+
+        function toggleMoreMenu() {
+            document.getElementById('moreMenu').classList.toggle('hidden');
+        }
+
+        function toggleMobileMore() {
+            document.getElementById('mobileMoreMenu').classList.toggle('hidden');
+        }
+
+        function hideMobileMore() {
+            document.getElementById('mobileMoreMenu').classList.add('hidden');
+        }
+
+        function toggleProfileMenu() {
+            document.getElementById('profileMenu').classList.toggle('hidden');
+        }
+
+        // ================= RENDER FUNCTIONS =================
+
+        function renderTeams() {
+            const container = document.getElementById('allTeamsList');
+            const favContainer = document.getElementById('favoriteTeamsList');
+            const favSection = document.getElementById('favoriteTeamsSection');
+            
+            // Render favorites
+            if (favoriteTeams.length > 0) {
+                favSection.classList.remove('hidden');
+                favContainer.innerHTML = favoriteTeams.map(teamName => {
+                    const team = teams.find(t => t.name === teamName);
+                    return `<span class="px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-sm">${team?.name || teamName}</span>`;
+                }).join('');
+            }
+            
+            // Render all teams
+            container.innerHTML = teams.map(team => {
+                const isFav = favoriteTeams.includes(team.name);
+                return `
+                    <div class="glass-panel rounded-xl p-4 hover:bg-white/5 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="team-logo bg-gradient-to-br ${team.color}">${team.abbr}</div>
+                                <div>
+                                    <h4 class="font-bold">${team.name}</h4>
+                                    <p class="text-xs text-gray-400">${team.played} played • ${team.won}W ${team.drawn}D ${team.lost}L</p>
+                                </div>
+                            </div>
+                            <button onclick="toggleFavoriteTeam('${team.name}')" class="p-2 rounded-full ${isFav ? 'text-yellow-400' : 'text-gray-400'} hover:text-yellow-400">
+                                <i class="fas fa-star"></i>
+                            </button>
+                        </div>
+                        <div class="mt-3 pt-3 border-t border-white/10 flex justify-between items-center">
+                            <div class="flex space-x-4 text-xs text-gray-400">
+                                <span>GF: ${team.gf}</span>
+                                <span>GA: ${team.ga}</span>
+                                <span>GD: ${team.gf - team.ga > 0 ? '+' : ''}${team.gf - team.ga}</span>
+                                <span class="text-orange-400 font-bold">${team.won * 3 + team.drawn} pts</span>
+                            </div>
+                            <button onclick="shareTeam('${team.name}')" class="text-blue-400 hover:text-blue-300 text-sm">
+                                <i class="fas fa-share-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderFixtures(filter = 'all') {
+            const container = document.getElementById('matchesList');
+            const today = new Date('2026-04-08');
+            
+            let filtered = allFixtures;
+            if (filter !== 'all') {
+                const filterDate = new Date(today);
+                if (filter === 'yesterday') filterDate.setDate(filterDate.getDate() - 1);
+                if (filter === 'tomorrow') filterDate.setDate(filterDate.getDate() + 1);
+                
+                filtered = allFixtures.filter(f => {
+                    const matchDate = new Date(f.date);
+                    if (filter === 'today') {
+                        return matchDate.toDateString() === today.toDateString();
+                    }
+                    return matchDate.toDateString() === filterDate.toDateString();
+                });
+            }
+            
+            // Separate following
+            const following = filtered.filter(f => starredMatches.includes(`${f.home}-${f.away}`));
+            const others = filtered.filter(f => !starredMatches.includes(`${f.home}-${f.away}`));
+            
+            // Update following section
+            const followingSection = document.getElementById('followingMatchesSection');
+            if (following.length > 0 && filter === 'today') {
+                followingSection.classList.remove('hidden');
+                document.getElementById('followingMatchesList').innerHTML = following.map(match => 
+                    renderMatchCard(match, true)
+                ).join('');
+            } else {
+                followingSection.classList.add('hidden');
+            }
+            
+            container.innerHTML = others.map(match => renderMatchCard(match)).join('');
+        }
+
+        function renderMatchCard(match, isFollowing = false) {
+            const homeTeam = teams.find(t => t.name === match.home);
+            const awayTeam = teams.find(t => t.name === match.away);
+            const isLive = match.status === 'live';
+            const isFinished = match.status === 'finished';
+            const isJoined = joinedMatches.includes(`${match.home}-${match.away}`);
+            
+            return `
+                <div class="match-card glass-panel rounded-xl p-4 ${isLive ? 'border-l-4 border-red-500' : ''} ${isFollowing ? 'border border-yellow-500/30' : ''}">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center space-x-2">
+                            ${isLive ? '<span class="px-2 py-1 rounded bg-red-500/20 text-red-400 text-xs font-bold live-pulse">LIVE</span>' : ''}
+                            ${isFinished ? '<span class="px-2 py-1 rounded bg-gray-500/20 text-gray-400 text-xs">FT</span>' : ''}
+                            ${isFollowing ? '<i class="fas fa-star text-yellow-400 text-xs"></i>' : ''}
+                            <span class="text-xs text-gray-400">${match.date} • ${match.venue}</span>
+                        </div>
+                        <div class="flex space-x-2
