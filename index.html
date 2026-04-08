@@ -2310,3 +2310,430 @@
                             <span class="text-xs text-gray-400">${match.date} • ${match.venue}</span>
                         </div>
                         <div class="flex space-x-2
+-filter').forEach(f => {
+                f.classList.remove('active', 'bg-orange-500', 'text-white');
+                f.classList.add('bg-white/10', 'text-gray-300');
+            });
+            document.querySelector(`.search-filter[data-filter="${type}"]`)?.classList.add('active', 'bg-orange-500', 'text-white');
+            document.querySelector(`.search-filter[data-filter="${type}"]`)?.classList.remove('bg-white/10', 'text-gray-300');
+            performSearch();
+        }
+
+        // ================= SHARING & SOCIAL =================
+
+        function shareMatch() {
+            const liveMatch = allFixtures.find(f => f.status === 'live');
+            if (!liveMatch) {
+                showToast('No live match currently');
+                return;
+            }
+            
+            const text = `🔴 LIVE: ${liveMatch.home} ${liveMatch.homeScore}-${liveMatch.awayScore} ${liveMatch.away} (${liveMatch.time}) - Watch on Lamu Sports Hub!`;
+            shareContent(text);
+        }
+
+        function shareMatchResult(home, away, homeScore, awayScore) {
+            const text = `🏁 ${home} ${homeScore}-${awayScore} ${away} - FKF Lamu County League results!`;
+            shareContent(text);
+        }
+
+        function shareEvent(text) {
+            shareContent(`⚽ ${text} - Lamu Sports Hub`);
+        }
+
+        function shareTeam(teamName) {
+            const team = teams.find(t => t.name === teamName);
+            const text = `⚽ ${team.name} - ${team.won} wins, ${team.gf} goals! Support your team on Lamu Sports Hub!`;
+            shareContent(text);
+        }
+
+        function shareTable() {
+            const sorted = [...teams].sort((a, b) => (b.won*3+b.drawn) - (a.won*3+a.drawn));
+            const top3 = sorted.slice(0, 3);
+            const text = `📈 Lamu County League Standings:\n1. ${top3[0].name} (${top3[0].won*3+top3[0].drawn} pts)\n2. ${top3[1].name} (${top3[1].won*3+top3[1].drawn} pts)\n3. ${top3[2].name} (${top3[2].won*3+top3[2].drawn} pts)\n\nFull table on Lamu Sports Hub!`;
+            shareContent(text);
+        }
+
+        function sharePrediction() {
+            const text = `🔮 My prediction for today's match! Think I'm right? Challenge me on Lamu Sports Hub!`;
+            shareContent(text);
+        }
+
+        function sharePlayer() {
+            const name = document.getElementById('profilePlayerName').textContent;
+            const text = `👤 Check out ${name}'s stats on Lamu Sports Hub!`;
+            shareContent(text);
+        }
+
+        function shareAchievement(text) {
+            shareContent(`🏆 ${text}\n\nJoin me on Lamu Sports Hub!`);
+        }
+
+        function shareApp() {
+            const text = `🏆 Lamu Sports Hub - The digital home of football in Lamu County, Kenya. Live scores, fixtures, standings, and more!`;
+            shareContent(text);
+        }
+
+        function shareContent(text) {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Lamu Sports Hub',
+                    text: text,
+                    url: window.location.href
+                });
+            } else {
+                navigator.clipboard.writeText(text + ' ' + window.location.href);
+                showToast('Copied to clipboard! Share anywhere.');
+            }
+        }
+
+        function sendReaction(emoji) {
+            // Create floating emoji
+            const float = document.createElement('div');
+            float.className = 'floating-emoji';
+            float.textContent = emoji;
+            float.style.left = (Math.random() * window.innerWidth * 0.8 + window.innerWidth * 0.1) + 'px';
+            float.style.bottom = '100px';
+            document.body.appendChild(float);
+            
+            setTimeout(() => float.remove(), 2000);
+            
+            // Update count
+            const counts = document.getElementById('reactionCounts');
+            const spans = counts.querySelectorAll('span');
+            const emojiIndex = ['🔥', '⚽', '👏', '😱', '😡', '🍿'].indexOf(emoji);
+            if (emojiIndex > -1 && spans[emojiIndex]) {
+                const current = parseInt(spans[emojiIndex].textContent.split(' ')[1]) || 0;
+                spans[emojiIndex].textContent = `${emoji} ${current + 1}`;
+            }
+            
+            showToast(`Sent ${emoji}!`);
+        }
+
+        function addActivity(text) {
+            const feed = document.getElementById('activityFeed');
+            const div = document.createElement('div');
+            div.className = 'flex items-center space-x-2 text-gray-300 chat-message';
+            div.innerHTML = `<span class="text-orange-400">Just now:</span><span>${text}</span>`;
+            feed.insertBefore(div, feed.firstChild);
+            if (feed.children.length > 10) feed.removeChild(feed.lastChild);
+        }
+
+        // ================= PWA & INSTALL =================
+
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installPrompt').classList.add('visible');
+        });
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        showToast('App installed!');
+                    }
+                    deferredPrompt = null;
+                    document.getElementById('installPrompt').classList.remove('visible');
+                });
+            } else {
+                showToast('Tap "Add to Home Screen" in your browser menu');
+            }
+        }
+
+        function dismissInstall() {
+            document.getElementById('installPrompt').classList.remove('visible');
+        }
+
+        function checkInstallPrompt() {
+            // Show install prompt after 30 seconds if not installed
+            setTimeout(() => {
+                if (!window.matchMedia('(display-mode: standalone)').matches && !deferredPrompt) {
+                    document.getElementById('installPrompt').classList.add('visible');
+                }
+            }, 30000);
+        }
+
+        // ================= LIVE SIMULATION =================
+
+        function startLiveSimulation() {
+            // Update live match time every minute
+            setInterval(() => {
+                const liveMatch = allFixtures.find(f => f.status === 'live');
+                if (liveMatch) {
+                    let min = parseInt(liveMatch.time) || 0;
+                    if (min < 90) {
+                        min++;
+                        liveMatch.time = min + "'";
+                        
+                        // Update UI if on dashboard
+                        const timeEl = document.getElementById('matchTime');
+                        if (timeEl && currentSection === 'dashboard') {
+                            timeEl.textContent = liveMatch.time;
+                        }
+                        
+                        // Auto-finish after 95 minutes
+                        if (min >= 95) {
+                            liveMatch.status = 'finished';
+                            liveMatch.time = 'FT';
+                            addNotification(`🏁 Full Time: ${liveMatch.home} ${liveMatch.homeScore}-${liveMatch.awayScore} ${liveMatch.away}`, 'match');
+                            renderFixtures();
+                        }
+                    }
+                }
+            }, 60000);
+
+            // Random chat messages
+            const randomUsers = ['Hassan_M', 'Amina_K', 'Omar_J', 'Saida_A', 'Yusuf_I'];
+            const randomMsgs = ['Great pass! 🔥', 'Come on defense! 💪', 'What a save! 🧤', 'That was close! 😱', 'Goal coming soon ⚽'];
+            
+            setInterval(() => {
+                if (Math.random() > 0.7 && currentSection === 'dashboard') {
+                    const user = randomUsers[Math.floor(Math.random() * randomUsers.length)];
+                    const msg = randomMsgs[Math.floor(Math.random() * randomMsgs.length)];
+                    
+                    const chat = document.getElementById('chatMessages');
+                    if (chat) {
+                        const div = document.createElement('div');
+                        div.className = 'chat-message flex items-start space-x-3';
+                        div.innerHTML = `
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-xs font-bold flex-shrink-0">${user.substring(0,2)}</div>
+                            <div class="flex-1">
+                                <div class="flex items-baseline space-x-2">
+                                    <span class="font-bold text-sm text-purple-400">${user}</span>
+                                    <span class="text-xs text-gray-500">Just now</span>
+                                </div>
+                                <p class="text-sm text-gray-300">${msg}</p>
+                            </div>
+                        `;
+                        chat.appendChild(div);
+                        chat.scrollTop = chat.scrollHeight;
+                    }
+                }
+            }, 20000);
+
+            // Update watching count randomly
+            setInterval(() => {
+                const countEl = document.getElementById('watchingCount');
+                if (countEl && currentSection === 'dashboard') {
+                    const base = 340;
+                    const variation = Math.floor(Math.random() * 40) - 20;
+                    countEl.textContent = (base + variation) + ' watching';
+                }
+            }, 15000);
+        }
+
+        // ================= UTILITY FUNCTIONS =================
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function compressImage(input) {
+            // Simplified image compression for demo
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('imagePreview');
+                    preview.style.backgroundImage = `url(${e.target.result})`;
+                    preview.classList.remove('hidden');
+                    showToast('Image ready for upload');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function updateProfilePhoto(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('profileImage').style.backgroundImage = `url(${e.target.result})`;
+                    document.getElementById('profileImage').style.backgroundSize = 'cover';
+                    document.getElementById('profileInitials').style.display = 'none';
+                    showToast('Profile photo updated');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function handleCSVUpload(input) {
+            showToast('CSV upload would process ' + input.files[0]?.name);
+        }
+
+        function playVideo(url) {
+            if (!url) {
+                showToast('Live stream starting...');
+                return;
+            }
+            window.open(url, '_blank');
+        }
+
+        function reactToNews(id, type) {
+            const item = news.find(n => n.id === id);
+            if (item) {
+                item.reactions[type]++;
+                renderNews();
+            }
+        }
+
+        function votePoll(option) {
+            showToast(`Voted for ${option}! Results updating...`);
+        }
+
+        function quickPredict(result) {
+            const predictions = { home: 'Home Win', draw: 'Draw', away: 'Away Win' };
+            showToast(`Predicted: ${predictions[result]}! Share to lock in.`);
+            
+            // Update prediction bars visually
+            const bars = document.querySelectorAll('.prediction-bar');
+            if (result === 'home') bars[0].style.setProperty('--percent', '75%');
+            if (result === 'draw') bars[1].style.setProperty('--percent', '25%');
+            if (result === 'away') bars[2].style.setProperty('--percent', '35%');
+        }
+
+        function submitPrediction() {
+            const home = document.getElementById('myHomeScore').value;
+            const away = document.getElementById('myAwayScore').value;
+            showToast(`Prediction locked: ${home}-${away}! Good luck! 🎯`);
+            
+            // Update stats
+            if (currentUser) {
+                currentUser.predictions = (currentUser.predictions || 0) + 1;
+                saveToStorage();
+                updateUIForUser();
+            }
+        }
+
+        function filterFixtures(type) {
+            renderFixtures(type);
+        }
+
+        function filterMatchesByDate(date) {
+            document.querySelectorAll('.match-date-tab').forEach(t => {
+                t.classList.remove('bg-orange-500', 'text-white');
+                t.classList.add('bg-white/10', 'text-gray-300');
+            });
+            event.target.classList.add('bg-orange-500', 'text-white');
+            event.target.classList.remove('bg-white/10', 'text-gray-300');
+            
+            renderFixtures(date);
+        }
+
+        function filterNews(type) {
+            // Filter implementation would go here
+            renderNews();
+        }
+
+        function showRegisterTeam() {
+            showToast('Team registration form would open here');
+        }
+
+        function showReporterForm() {
+            showToast('Reporter submission form would open here');
+        }
+
+        function showAddPlayerForm() {
+            showToast('Add player form would open here');
+        }
+
+        function recoverTeams() {
+            showToast('Teams recovered from backup');
+        }
+
+        function recoverMatches() {
+            showToast('Matches recovered from backup');
+        }
+
+        function resetToDefault() {
+            if (confirm('Reset all data to factory default? This cannot be undone.')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        function showMVP() {
+            const matches = allFixtures.filter(f => f.status === 'finished').slice(0, 3);
+            document.getElementById('mvpMatches').innerHTML = matches.map(m => `
+                <div class="glass-panel rounded-xl p-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="font-bold text-sm">${m.home} vs ${m.away}</span>
+                        <span class="text-xs text-gray-400">FT</span>
+                    </div>
+                    <p class="text-xs text-gray-400 mb-3">Vote for Player of the Match:</p>
+                    <div class="space-y-2">
+                        ${players.filter(p => p.team === m.home || p.team === m.away).slice(0, 3).map(p => `
+                            <button onclick="voteMVP('${p.name}')" class="w-full p-2 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-between">
+                                <span class="text-sm">${p.name}</span>
+                                <span class="text-xs text-orange-400">Vote</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function voteMVP(player) {
+            showToast(`Voted for ${player} as MVP!`);
+        }
+
+        function filterPlayers() {
+            renderPlayers();
+        }
+
+        function showMVP() {
+            showSection('mvp');
+            const matches = allFixtures.filter(f => f.status === 'finished').slice(0, 3);
+            document.getElementById('mvpMatches').innerHTML = matches.map(m => `
+                <div class="glass-panel rounded-xl p-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="font-bold text-sm">${m.home} vs ${m.away}</span>
+                        <span class="text-xs text-gray-400">FT</span>
+                    </div>
+                    <p class="text-xs text-gray-400 mb-3">Vote for Player of the Match:</p>
+                    <div class="space-y-2">
+                        ${players.filter(p => p.team === m.home || p.team === m.away).slice(0, 3).map(p => `
+                            <button onclick="voteMVP('${p.name}')" class="w-full p-2 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-between">
+                                <span class="text-sm">${p.name}</span>
+                                <span class="text-xs text-orange-400">Vote</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function voteMVP(player) {
+            showToast(`Voted for ${player} as MVP!`);
+        }
+
+        // Close modals on outside click
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('active');
+            }
+        }
+
+        // Initialize MVP section
+        document.addEventListener('DOMContentLoaded', () => {
+            if (document.getElementById('mvpMatches')) {
+                showMVP();
+            }
+        });
+
+        // Service Worker registration for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('data:text/javascript;base64,' + btoa(`
+                self.addEventListener('install', e => self.skipWaiting());
+                self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));
+            `)).catch(() => console.log('SW registration skipped'));
+        }
+    </script>
+</body>
+                    </html>
+                        
