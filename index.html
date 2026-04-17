@@ -1,265 +1,1217 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lamu Sports Hub</title>
-
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-
-<style>
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #0B1B2D;
-    color: white;
-}
-
-nav {
-    display: flex;
-    gap: 10px;
-    padding: 15px;
-    background: #111;
-}
-
-button {
-    padding: 8px 12px;
-    cursor: pointer;
-}
-
-.section {
-    display: none;
-    padding: 20px;
-}
-
-.section.active {
-    display: block;
-}
-
-.card {
-    background: #1c2b3a;
-    padding: 15px;
-    margin: 10px 0;
-    border-radius: 10px;
-}
-
-input {
-    padding: 6px;
-    margin: 5px;
-}
-</style>
-</head>
-
-<body>
-
-<nav>
-    <button onclick="showSection('dashboard')">Dashboard</button>
-    <button onclick="showSection('teams')">Teams</button>
-    <button onclick="showSection('players')">Players</button>
-    <button onclick="showSection('matches')">Matches</button>
-</nav>
-
-<!-- DASHBOARD -->
-<div id="dashboard" class="section active">
-    <h2>Dashboard</h2>
-    <div id="stats"></div>
-</div>
-
-<!-- TEAMS -->
-<div id="teams" class="section">
-    <h2>Teams</h2>
-
-    <input id="teamName" placeholder="Team name">
-    <button onclick="addTeam()">Add Team</button>
-
-    <div id="teamsList"></div>
-</div>
-
-<!-- PLAYERS -->
-<div id="players" class="section">
-    <h2>Players</h2>
-
-    <input id="playerName" placeholder="Player name">
-    <input id="playerTeam" placeholder="Team ID">
-    <button onclick="addPlayer()">Add Player</button>
-
-    <div id="playersList"></div>
-</div>
-
-<!-- MATCHES -->
-<div id="matches" class="section">
-    <h2>Matches</h2>
-
-    <input id="homeTeam" placeholder="Home Team ID">
-    <input id="awayTeam" placeholder="Away Team ID">
-    <button onclick="addMatch()">Create Match</button>
-
-    <div id="matchesList"></div>
-</div>
-
-<script>
-const DataStore = {
-    init() {
-        if (!localStorage.getItem("lamu_data")) {
-            localStorage.setItem("lamu_data", JSON.stringify({
-                teams: [],
-                players: [],
-                matches: []
-            }));
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#FF6B00">
+    <meta name="description" content="Lamu Sports Hub - The digital home of football in Lamu County, Kenya. FKF Lamu County League live scores, standings, teams, and more.">
+    <title>Lamu Sports Hub | FKF Lamu County League</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiTGFtdSBTcG9ydHMgSHViIiwic2hvcnRfbmFtZSI6IkxhbXUgSHViIiwic3RhcnRfdXJsIjoiLiIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwZjE3MmEiLCJ0aGVtZV9jb2xvciI6IiNGRjZCMDAiLCJpY29ucyI6W3sic3JjIjoiaHR0cHM6Ly9jZG4uanNkZWxpdnIubmV0L2doL3R3ZW1vamkvdHdlbW9qaS1hc3NldHNAbGF0ZXN0L3N5bWJvbHMvMS41ODIvc3ZnLzI2MGEuc3ZnIiwic2l6ZXMiOiIxOTJ4MTkyIiwidHlwZSI6ImltYWdlL3N2Zyt4bWwifV19">
+    
+    <style>
+        :root {
+            --primary: #FF6B00;
+            --primary-dark: #E55A00;
+            --primary-light: #FF8533;
+            --secondary: #0047AB;
+            --accent: #10B981;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --dark: #0f172a;
+            --darker: #020617;
+            --dark-light: #1e293b;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --gray-light: #94a3b8;
+            --card-bg: rgba(30, 41, 59, 0.8);
+            --glass: rgba(15, 23, 42, 0.95);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
         }
-    },
 
-    get() {
-        return JSON.parse(localStorage.getItem("lamu_data"));
-    },
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-    save(data) {
-        localStorage.setItem("lamu_data", JSON.stringify(data));
-    }
-};
+        html {
+            scroll-behavior: smooth;
+        }
 
-/* NAVIGATION */
-function showSection(id) {
-    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
-    document.getElementById(id).classList.add("active");
-}
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--darker);
+            color: var(--light);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding-bottom: 80px;
+            overflow-x: hidden;
+        }
 
-/* RENDER */
-function renderAll() {
-    renderStats();
-    renderTeams();
-    renderPlayers();
-    renderMatches();
-}
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(255, 107, 0, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(0, 71, 171, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 70%);
+        }
 
-function renderStats() {
-    const data = DataStore.get();
-    document.getElementById("stats").innerHTML = `
-        <div class="card">Teams: ${data.teams.length}</div>
-        <div class="card">Players: ${data.players.length}</div>
-        <div class="card">Matches: ${data.matches.length}</div>
-    `;
-}
+        .floating-orb {
+            position: absolute;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), transparent);
+            opacity: 0.1;
+            animation: float 20s infinite ease-in-out;
+        }
 
-function renderTeams() {
-    const teams = DataStore.get().teams;
-    document.getElementById("teamsList").innerHTML = teams.map(t => `
-        <div class="card">
-            ID: ${t.id} | ${t.name}
-        </div>
-    `).join("");
-}
+        .floating-orb:nth-child(1) { width: 300px; height: 300px; top: -150px; left: -150px; animation-delay: 0s; }
+        .floating-orb:nth-child(2) { width: 200px; height: 200px; top: 50%; right: -100px; animation-delay: 5s; }
+        .floating-orb:nth-child(3) { width: 150px; height: 150px; bottom: 10%; left: 20%; animation-delay: 10s; }
 
-function renderPlayers() {
-    const data = DataStore.get();
-    document.getElementById("playersList").innerHTML = data.players.map(p => {
-        const team = data.teams.find(t => t.id == p.teamId);
-        return `
-            <div class="card">
-                ${p.name} (${team ? team.name : "No Team"})
-            </div>
-        `;
-    }).join("");
-}
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -30px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
 
-function renderMatches() {
-    const data = DataStore.get();
-    document.getElementById("matchesList").innerHTML = data.matches.map(m => {
-        const home = data.teams.find(t => t.id == m.home);
-        const away = data.teams.find(t => t.id == m.away);
-        return `
-            <div class="card">
-                ${home?.name || "?"} vs ${away?.name || "?"}<br>
-                Score: ${m.score}<br>
-                Status: ${m.status}
-                <br><br>
-                <button onclick="startMatch(${m.id})">Start</button>
-                <button onclick="goal(${m.id}, 'home')">Goal Home</button>
-                <button onclick="goal(${m.id}, 'away')">Goal Away</button>
-                <button onclick="finishMatch(${m.id})">Finish</button>
-            </div>
-        `;
-    }).join("");
-}
+        /* Header */
+        .app-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 107, 0, 0.2);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+        }
 
-/* ACTIONS */
-function addTeam() {
-    const name = document.getElementById("teamName").value;
-    if (!name) return;
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: var(--primary);
+            text-decoration: none;
+        }
 
-    const data = DataStore.get();
-    data.teams.push({ id: Date.now(), name });
-    DataStore.save(data);
+        .header-logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 15px rgba(255, 107, 0, 0.3);
+        }
 
-    renderAll();
-}
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
 
-function addPlayer() {
-    const name = document.getElementById("playerName").value;
-    const teamId = document.getElementById("playerTeam").value;
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: none;
+            background: rgba(255, 107, 0, 0.1);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            font-size: 1.25rem;
+        }
 
-    const data = DataStore.get();
-    data.players.push({ id: Date.now(), name, teamId });
+        .icon-btn:hover {
+            background: var(--primary);
+            color: white;
+            transform: scale(1.05);
+        }
 
-    DataStore.save(data);
-    renderAll();
-}
+        .badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 18px;
+            height: 18px;
+            background: var(--danger);
+            color: white;
+            border-radius: 50%;
+            font-size: 0.625rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--darker);
+        }
 
-function addMatch() {
-    const home = document.getElementById("homeTeam").value;
-    const away = document.getElementById("awayTeam").value;
+        /* Main Content */
+        .main-content {
+            margin-top: 60px;
+            min-height: calc(100vh - 140px);
+        }
 
-    const data = DataStore.get();
-    data.matches.push({
-        id: Date.now(),
-        home,
-        away,
-        score: "0-0",
-        status: "upcoming"
-    });
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 107, 0, 0.2);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 0.5rem;
+        }
 
-    DataStore.save(data);
-    renderAll();
-}
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.5rem;
+            color: var(--gray);
+            text-decoration: none;
+            font-size: 0.625rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            border-radius: 12px;
+            min-width: 60px;
+        }
 
-function startMatch(id) {
-    const data = DataStore.get();
-    const match = data.matches.find(m => m.id == id);
-    match.status = "live";
-    DataStore.save(data);
-    renderAll();
-}
+        .nav-item.active {
+            color: var(--primary);
+            background: rgba(255, 107, 0, 0.1);
+        }
 
-function goal(id, team) {
-    const data = DataStore.get();
-    const match = data.matches.find(m => m.id == id);
+        .nav-item-icon {
+            font-size: 1.5rem;
+            transition: transform 0.3s;
+        }
 
-    let [h, a] = match.score.split("-").map(Number);
+        .nav-item.active .nav-item-icon {
+            transform: translateY(-2px);
+        }
 
-    if (team === "home") h++;
-    else a++;
+        /* Sections */
+        .section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
 
-    match.score = h + "-" + a;
+        .section.active {
+            display: block;
+        }
 
-    DataStore.save(data);
-    renderAll();
-}
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-function finishMatch(id) {
-    const data = DataStore.get();
-    const match = data.matches.find(m => m.id == id);
-    match.status = "finished";
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 107, 0, 0.15);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+            transition: all 0.3s;
+        }
 
-    DataStore.save(data);
-    renderAll();
-}
+        .card:hover {
+            border-color: rgba(255, 107, 0, 0.3);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
 
-/* INIT */
-document.addEventListener("DOMContentLoaded", () => {
-    DataStore.init();
-    renderAll();
-});
-</script>
+        .card-header {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 107, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
 
-</body>
-</html>
+        .card-title {
+            font-size: 1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-body {
+            padding: 1rem;
+        }
+
+        /* Live Match Banner */
+        .live-banner {
+            background: linear-gradient(135deg, var(--danger), #DC2626);
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: pulse-red 2s infinite;
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        }
+
+        .live-indicator {
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Match Cards */
+        .match-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 107, 0, 0.15);
+            border-radius: 16px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            transition: all 0.3s;
+        }
+
+        .match-card:hover {
+            border-color: var(--primary);
+        }
+
+        .match-teams {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+
+        .match-team {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .match-team-logo {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .match-team-name {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .match-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0 1rem;
+        }
+
+        .match-score {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .match-time {
+            font-size: 0.75rem;
+            color: var(--gray);
+            background: rgba(255, 107, 0, 0.1);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+        }
+
+        .match-time.live {
+            background: var(--danger);
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        .match-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .match-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            border: none;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .match-btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .match-btn-secondary {
+            background: rgba(255, 107, 0, 0.1);
+            color: var(--primary);
+        }
+
+        /* Team List */
+        .team-list-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 107, 0, 0.15);
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .team-list-item:hover {
+            border-color: var(--primary);
+            transform: translateX(5px);
+        }
+
+        .team-list-logo {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .team-list-info {
+            flex: 1;
+        }
+
+        .team-list-name {
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .team-list-meta {
+            font-size: 0.75rem;
+            color: var(--gray);
+        }
+
+        .team-list-stats {
+            text-align: right;
+        }
+
+        .team-list-points {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        /* Standings Table */
+        .standings-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 0.5rem;
+        }
+
+        .standings-table tr {
+            background: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .standings-table td {
+            padding: 1rem 0.5rem;
+            vertical-align: middle;
+        }
+
+        .standings-table td:first-child {
+            border-radius: 12px 0 0 12px;
+            padding-left: 1rem;
+        }
+
+        .standings-table td:last-child {
+            border-radius: 0 12px 12px 0;
+            padding-right: 1rem;
+        }
+
+        .position-badge {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.875rem;
+        }
+
+        .position-1 { background: linear-gradient(135deg, #FFD700, #FFA500); color: #000; }
+        .position-2 { background: linear-gradient(135deg, #C0C0C0, #A0A0A0); color: #000; }
+        .position-3 { background: linear-gradient(135deg, #CD7F32, #B87333); color: #fff; }
+        .position-other { background: rgba(255, 107, 0, 0.1); color: var(--primary); }
+
+        .team-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .team-cell-logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .team-cell-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .team-cell-name {
+            font-weight: 700;
+            font-size: 0.875rem;
+        }
+
+        .team-cell-abbr {
+            font-size: 0.75rem;
+            color: var(--gray);
+        }
+
+        .stats-cell {
+            text-align: center;
+            font-size: 0.875rem;
+            color: var(--gray-light);
+        }
+
+        .points-cell {
+            text-align: right;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        /* Player Cards */
+        .player-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .player-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 107, 0, 0.15);
+            border-radius: 16px;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .player-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        .player-avatar {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            border-radius: 50%;
+            margin: 0 auto 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            border: 3px solid rgba(255, 107, 0, 0.3);
+        }
+
+        .player-name {
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .player-team {
+            font-size: 0.75rem;
+            color: var(--gray);
+            margin-bottom: 0.5rem;
+        }
+
+        .player-stats {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255, 107, 0, 0.1);
+        }
+
+        .player-stat {
+            text-align: center;
+        }
+
+        .player-stat-value {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .player-stat-label {
+            font-size: 0.625rem;
+            color: var(--gray);
+            text-transform: uppercase;
+        }
+
+        /* News Cards */
+        .news-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 107, 0, 0.15);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .news-image {
+            height: 180px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            position: relative;
+        }
+
+        .news-badge {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .news-content {
+            padding: 1rem;
+        }
+
+        .news-date {
+            font-size: 0.75rem;
+            color: var(--gray);
+            margin-bottom: 0.5rem;
+        }
+
+        .news-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+
+        .news-excerpt {
+            font-size: 0.875rem;
+            color: var(--gray-light);
+            line-height: 1.5;
+        }
+
+        /* Admin Panel */
+        .admin-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .admin-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 107, 0, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .admin-card:hover {
+            background: rgba(255, 107, 0, 0.1);
+            border-color: var(--primary);
+            transform: scale(1.02);
+        }
+
+        .admin-card-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            margin: 0 auto 1rem;
+        }
+
+        .admin-card-title {
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .admin-card-desc {
+            font-size: 0.75rem;
+            color: var(--gray);
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;}
+                                    <button class="match-btn match-btn-primary" onclick="joinMatch(${match.id})">
+                                    ✋ Join Match
+                                </button>
+                            ` : ''}
+                            <button class="match-btn match-btn-secondary" onclick="shareMatch(${match.id})">
+                                📤 Share
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderStandings() {
+            const tbody = document.getElementById('standingsBody');
+            const miniTbody = document.getElementById('miniStandings');
+            
+            // Calculate standings from match results
+            updateStandingsFromMatches();
+            
+            // Sort by points, then goal difference
+            const sorted = [...DataStore.teams].sort((a, b) => {
+                if (b.stats.pts !== a.stats.pts) return b.stats.pts - a.stats.pts;
+                return (b.stats.gf - b.stats.ga) - (a.stats.gf - a.stats.ga);
+            });
+            
+            const renderRow = (team, index, isMini = false) => {
+                const posClass = index < 3 ? `position-${index + 1}` : 'position-other';
+                const gd = team.stats.gf - team.stats.ga;
+                
+                if (isMini && index >= 3) return '';
+                
+                return `
+                    <tr>
+                        <td><div class="position-badge ${posClass}">${index + 1}</div></td>
+                        <td>
+                            <div class="team-cell">
+                                <div class="team-cell-logo">${team.logo}</div>
+                                <div class="team-cell-info">
+                                    <div class="team-cell-name">${team.name}</div>
+                                    ${!isMini ? `<div class="team-cell-abbr">${team.abbr}</div>` : ''}
+                                </div>
+                            </div>
+                        </td>
+                        ${!isMini ? `
+                            <td class="stats-cell">${team.stats.p}</td>
+                            <td class="stats-cell">${team.stats.w}</td>
+                            <td class="stats-cell">${team.stats.d}</td>
+                            <td class="stats-cell">${team.stats.l}</td>
+                            <td class="stats-cell">${team.stats.gf}</td>
+                            <td class="stats-cell">${team.stats.ga}</td>
+                            <td class="stats-cell">${gd > 0 ? '+' : ''}${gd}</td>
+                        ` : ''}
+                        <td class="points-cell">${team.stats.pts}</td>
+                    </tr>
+                `;
+            };
+            
+            if (tbody) {
+                tbody.innerHTML = sorted.map((team, i) => renderRow(team, i)).join('');
+            }
+            if (miniTbody) {
+                miniTbody.innerHTML = sorted.map((team, i) => renderRow(team, i, true)).join('');
+            }
+        }
+
+        function renderPlayers() {
+            const container = document.getElementById('playersGrid');
+            if (!container) return;
+            
+            const sorted = [...DataStore.players].sort((a, b) => (b.goals || 0) - (a.goals || 0));
+            
+            container.innerHTML = sorted.map(player => {
+                const team = DataStore.teams.find(t => t.id === player.team);
+                return `
+                    <div class="player-card" onclick="showPlayerDetail(${player.id})">
+                        <div class="player-avatar">👤</div>
+                        <div class="player-name">${player.name}</div>
+                        <div class="player-team">${team?.name || 'Unknown'} • ${player.position}</div>
+                        <div class="player-stats">
+                            <div class="player-stat">
+                                <div class="player-stat-value">${player.goals || 0}</div>
+                                <div class="player-stat-label">Goals</div>
+                            </div>
+                            <div class="player-stat">
+                                <div class="player-stat-value">${player.assists || 0}</div>
+                                <div class="player-stat-label">Assists</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderNews() {
+            const container = document.getElementById('newsList');
+            if (!container) return;
+            
+            const sorted = [...DataStore.news].sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            container.innerHTML = sorted.map(news => `
+                <div class="news-card" onclick="showNewsDetail(${news.id})">
+                    <div class="news-image">
+                        📰
+                        ${news.author === 'Official' ? '<span class="news-badge">✓ Official</span>' : ''}
+                    </div>
+                    <div class="news-content">
+                        <div class="news-date">${formatDate(news.date)}</div>
+                        <div class="news-title">${news.title}</div>
+                        <div class="news-excerpt">${news.content.substring(0, 120)}...</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderActivity() {
+            const container = document.getElementById('activityFeed');
+            if (!container) return;
+            
+            const activities = [
+                { user: 'Ahmed H.', action: 'joined Lamu Queens vs 11 Brothers', time: '2 min ago' },
+                { user: 'Sarah M.', action: 'predicted a home win', time: '5 min ago' },
+                { user: 'Coach Juma', action: 'updated team lineup', time: '12 min ago' },
+                { user: 'Fatima A.', action: 'shared match result', time: '15 min ago' }
+            ];
+            
+            container.innerHTML = activities.map(act => `
+                <div class="activity-item">
+                    <div class="activity-avatar">${act.user.charAt(0)}</div>
+                    <div class="activity-content">
+                        <div class="activity-text"><strong>${act.user}</strong> ${act.action}</div>
+                        <div class="activity-time">${act.time}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderUpcoming() {
+            const container = document.getElementById('upcomingList');
+            if (!container) return;
+            
+            const upcoming = DataStore.matches
+                .filter(m => m.status === 'upcoming')
+                .slice(0, 3);
+            
+            if (upcoming.length === 0) {
+                container.innerHTML = '<p style="color: var(--gray); text-align: center;">No upcoming matches</p>';
+                return;
+            }
+            
+            container.innerHTML = upcoming.map(match => {
+                const home = DataStore.teams.find(t => t.id === match.home);
+                const away = DataStore.teams.find(t => t.id === match.away);
+                
+                return `
+                    <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: rgba(255, 107, 0, 0.05); border-radius: 10px; margin-bottom: 0.5rem;">
+                        <div style="font-size: 1.5rem;">${home?.logo} vs ${away?.logo}</div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; font-size: 0.875rem;">${home?.name} vs ${away?.name}</div>
+                            <div style="font-size: 0.75rem; color: var(--gray);">${formatDate(match.date)} • ${match.time}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateStats() {
+            const totalGoals = DataStore.teams.reduce((sum, t) => sum + t.stats.gf, 0);
+            const liveMatches = DataStore.matches.filter(m => m.status === 'live').length;
+            
+            // Update any stat displays
+            const statElements = {
+                'statTeams': DataStore.teams.length,
+                'statMatches': DataStore.matches.length,
+                'statPlayers': DataStore.players.length,
+                'statGoals': totalGoals
+            };
+            
+            Object.entries(statElements).forEach(([id, value]) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value;
+            });
+            
+            // Show/hide live banner
+            const liveBanner = document.getElementById('liveBanner');
+            if (liveBanner) {
+                if (liveMatches > 0) {
+                    liveBanner.classList.remove('hidden');
+                    const liveMatch = DataStore.matches.find(m => m.status === 'live');
+                    if (liveMatch) {
+                        const home = DataStore.teams.find(t => t.id === liveMatch.home);
+                        const away = DataStore.teams.find(t => t.id === liveMatch.away);
+                        document.getElementById('liveMatchText').textContent = `${home?.name} vs ${away?.name}`;
+                        document.getElementById('liveScore').textContent = `${liveMatch.homeScore} - ${liveMatch.awayScore}`;
+                    }
+                } else {
+                    liveBanner.classList.add('hidden');
+                }
+            }
+        }
+
+        function populateSelects() {
+            const teamOptions = DataStore.teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+            
+            const selects = ['matchHomeTeam', 'matchAwayTeam', 'playerTeam', 'scoreMatchSelect'];
+            selects.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (id === 'scoreMatchSelect') {
+                        el.innerHTML = DataStore.matches.map(m => {
+                            const home = DataStore.teams.find(t => t.id === m.home);
+                            const away = DataStore.teams.find(t => t.id === m.away);
+                            return `<option value="${m.id}">${home?.name} vs ${away?.name}</option>`;
+                        }).join('') || '<option>No matches</option>';
+                    } else {
+                        el.innerHTML = teamOptions;
+                    }
+                }
+            });
+        }
+
+        // Admin Functions
+        function addMatch() {
+            const home = parseInt(document.getElementById('matchHomeTeam').value);
+            const away = parseInt(document.getElementById('matchAwayTeam').value);
+            const date = document.getElementById('matchDate').value;
+            const time = document.getElementById('matchTime').value;
+            const venue = document.getElementById('matchVenue').value;
+            
+            if (home === away) {
+                showToast('Home and away teams must be different', 'error');
+                return;
+            }
+            
+            if (!date) {
+                showToast('Please select a date', 'error');
+                return;
+            }
+            
+            const newMatch = {
+                id: Date.now(),
+                home, away, date, time, venue,
+                status: 'upcoming',
+                homeScore: 0,
+                awayScore: 0,
+                joiners: []
+            };
+            
+            DataStore.matches.push(newMatch);
+            saveData();
+            renderAll();
+            hideModal('addMatchModal');
+            showToast('Match scheduled successfully!');
+        }
+
+        function updateScore() {
+            const matchId = parseInt(document.getElementById('scoreMatchSelect').value);
+            const homeScore = parseInt(document.getElementById('scoreHome').value) || 0;
+            const awayScore = parseInt(document.getElementById('scoreAway').value) || 0;
+            const status = document.getElementById('scoreStatus').value;
+            
+            const match = DataStore.matches.find(m => m.id === matchId);
+            if (!match) {
+                showToast('Match not found', 'error');
+                return;
+            }
+            
+            const oldStatus = match.status;
+            match.homeScore = homeScore;
+            match.awayScore = awayScore;
+            match.status = status;
+            
+            // Update team stats if match finished
+            if (status === 'finished' && oldStatus !== 'finished') {
+                updateTeamStats(match);
+            }
+            
+            saveData();
+            renderAll();
+            hideModal('updateScoreModal');
+            showToast('Score updated!');
+        }
+
+        function updateTeamStats(match) {
+            const home = DataStore.teams.find(t => t.id === match.home);
+            const away = DataStore.teams.find(t => t.id === match.away);
+            
+            if (!home || !away) return;
+            
+            home.stats.p++;
+            away.stats.p++;
+            home.stats.gf += match.homeScore;
+            home.stats.ga += match.awayScore;
+            away.stats.gf += match.awayScore;
+            away.stats.ga += match.homeScore;
+            
+            if (match.homeScore > match.awayScore) {
+                home.stats.w++;
+                away.stats.l++;
+                home.stats.pts += 3;
+            } else if (match.homeScore < match.awayScore) {
+                home.stats.l++;
+                away.stats.w++;
+                away.stats.pts += 3;
+            } else {
+                home.stats.d++;
+                away.stats.d++;
+                home.stats.pts += 1;
+                away.stats.pts += 1;
+            }
+        }
+
+        function updateStandingsFromMatches() {
+            // Reset all stats
+            DataStore.teams.forEach(t => {
+                t.stats = { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+            });
+            
+            // Recalculate from finished matches
+            DataStore.matches.filter(m => m.status === 'finished').forEach(match => {
+                updateTeamStats(match);
+            });
+        }
+
+        function addTeam() {
+            const name = document.getElementById('teamName').value.trim();
+            const abbr = document.getElementById('teamAbbr').value.trim().toUpperCase();
+            const venue = document.getElementById('teamVenue').value;
+            
+            if (!name || !abbr) {
+                showToast('Please fill all fields', 'error');
+                return;
+            }
+            
+            const newTeam = {
+                id: Date.now(),
+                name,
+                abbr,
+                venue,
+                logo: '⚽',
+                founded: new Date().getFullYear(),
+                stats: { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 }
+            };
+            
+            DataStore.teams.push(newTeam);
+            saveData();
+            renderAll();
+            hideModal('addTeamModal');
+            showToast('Team registered!');
+        }
+
+        function addPlayer() {
+            const name = document.getElementById('playerName').value.trim();
+            const team = parseInt(document.getElementById('playerTeam').value);
+            const position = document.getElementById('playerPosition').value;
+            const number = parseInt(document.getElementById('playerNumber').value);
+            const age = parseInt(document.getElementById('playerAge').value);
+            
+            if (!name) {
+                showToast('Please enter player name', 'error');
+                return;
+            }
+            
+            const newPlayer = {
+                id: Date.now(),
+                name, team, position, number, age,
+                goals: 0,
+                assists: 0
+            };
+            
+            DataStore.players.push(newPlayer);
+            saveData();
+            renderAll();
+            hideModal('addPlayerModal');
+            showToast('Player registered!');
+        }
+
+        function addNews() {
+            const title = document.getElementById('newsTitle').value.trim();
+            const content = document.getElementById('newsContent').value.trim();
+            
+            if (!title || !content) {
+                showToast('Please fill all fields', 'error');
+                return;
+            }
+            
+            const newNews = {
+                id: Date.now(),
+                title,
+                content,
+                date: new Date().toISOString(),
+                author: DataStore.isAdmin ? 'Official' : 'User'
+            };
+            
+            DataStore.news.push(newNews);
+            saveData();
+            renderAll();
+            hideModal('addNewsModal');
+            showToast('News published!');
+        }
+
+        // User Actions
+        function joinMatch(matchId) {
+            if (!DataStore.currentUser) {
+                showModal('loginModal');
+                return;
+            }
+            
+            const match = DataStore.matches.find(m => m.id === matchId);
+            if (!match) return;
+            
+            if (!match.joiners) match.joiners = [];
+            
+            if (match.joiners.includes(DataStore.currentUser.name)) {
+                showToast('You already joined this match!');
+                return;
+            }
+            
+            match.joiners.push(DataStore.currentUser.name);
+            saveData();
+            renderAll();
+            showToast('You joined the match!');
+        }
+
+        function predictMatch() {
+            if (!DataStore.currentUser) {
+                showModal('loginModal');
+                return;
+            }
+            showToast('Prediction feature coming soon!');
+        }
+
+        function shareMatch(matchId) {
+            const match = DataStore.matches.find(m => m.id === matchId);
+            if (!match) return;
+            
+            const home = DataStore.teams.find(t => t.id === match.home);
+            const away = DataStore.teams.find(t => t.id === match.away);
+            
+            const text = `🏆 ${home?.name} vs ${away?.name}\n📅 ${formatDate(match.date)} • ${match.time}\n📍 ${match.venue}\n\nvia Lamu Sports Hub`;
+            
+            if (navigator.share) {
+                navigator.share({ title: 'Lamu Sports Hub', text });
+            } else {
+                navigator.clipboard.writeText(text);
+                showToast('Match details copied!');
+            }
+        }
+
+        // Authentication
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            if (modalId === 'pinModal') {
+                DataStore.pinInput = '';
+                updatePinDisplay();
+            }
+        }
+
+        function showPinModal() {
+            hideModal('loginModal');
+            showModal('pinModal');
+        }
+
+        function enterPin(num) {
+            if (DataStore.pinInput.length < 4) {
+                DataStore.pinInput += num;
+                updatePinDisplay();
+            }
+        }
+
+        function clearPin() {
+            DataStore.pinInput = DataStore.pinInput.slice(0, -1);
+            updatePinDisplay();
+        }
+
+        function updatePinDisplay() {
+            const dots = document.querySelectorAll('.pin-dot');
+            dots.forEach((dot, i) => {
+                dot.classList.toggle('filled', i < DataStore.pinInput.length);
+            });
+        }
+
+        function submitPin() {
+            if (DataStore.pinInput.length !== 4) {
+                showToast('Enter 4 digits', 'error');
+                return;}
+                
+                
