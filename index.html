@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lamu Sports Hub</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0B1B2D;
+    color: white;
+}
+
+nav {
+    padding: 1rem;
+    background: #111;
+    display: flex;
+    gap: 1rem;
+}
+
+button {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+.section {
+    display: none;
+    padding: 20px;
+}
+
+.section.active {
+    display: block;
+}
+
+.card {
+    background: #1c2b3a;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<nav>
+    <button onclick="showSection('dashboard')">Dashboard</button>
+    <button onclick="showSection('teams')">Teams</button>
+    <button onclick="showSection('players')">Players</button>
+    <button onclick="showSection('matches')">Matches</button>
+</nav>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="section active">
+    <h2>Dashboard</h2>
+    <div id="stats"></div>
+</div>
+
+<!-- TEAMS -->
+<div id="teams" class="section">
+    <h2>Teams</h2>
+    <div id="teamsList"></div>
+</div>
+
+<!-- PLAYERS -->
+<div id="players" class="section">
+    <h2>Players</h2>
+    <div id="playersList"></div>
+</div>
+
+<!-- MATCHES -->
+<div id="matches" class="section">
+    <h2>Matches</h2>
+    <div id="matchesList"></div>
+</div>
+
+<script>
+/* =========================
+   DATA STORE
+========================= */
+const DataStore = {
+    init() {
+        if (!localStorage.getItem("lamu_data")) {
+            const data = {
+                teams: [
+                    { id:1, name:"Lamu FC", points:39 },
+                    { id:2, name:"11 Brothers", points:34 }
+                ],
+                players: [
+                    { id:1, name:"Yusuf Ibrahim", teamId:1 },
+                    { id:2, name:"Ali Said", teamId:1 }
+                ],
+                matches: [
+                    { id:1, home:1, away:2, score:"2-1", status:"finished" }
+                ]
+            };
+            localStorage.setItem("lamu_data", JSON.stringify(data));
+        }
+    },
+
+    get() {
+        return JSON.parse(localStorage.getItem("lamu_data"));
+    },
+
+    save(data) {
+        localStorage.setItem("lamu_data", JSON.stringify(data));
+    }
+};
+
+/* =========================
+   NAVIGATION
+========================= */
+function showSection(id) {
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+}
+
+/* =========================
+   RENDER FUNCTIONS
+========================= */
+function renderStats() {
+    const data = DataStore.get();
+    document.getElementById("stats").innerHTML = `
+        <div class="card">Teams: ${data.teams.length}</div>
+        <div class="card">Players: ${data.players.length}</div>
+        <div class="card">Matches: ${data.matches.length}</div>
+    `;
+}
+
+function renderTeams() {
+    const teams = DataStore.get().teams;
+    document.getElementById("teamsList").innerHTML = teams.map(t => `
+        <div class="card">
+            <strong>${t.name}</strong><br>
+            Points: ${t.points}
+        </div>
+    `).join("");
+}
+
+function renderPlayers() {
+    const data = DataStore.get();
+    document.getElementById("playersList").innerHTML = data.players.map(p => {
+        const team = data.teams.find(t => t.id === p.teamId);
+        return `
+            <div class="card">
+                ${p.name} - ${team ? team.name : "No Team"}
+            </div>
+        `;
+    }).join("");
+}
+
+function renderMatches() {
+    const data = DataStore.get();
+    document.getElementById("matchesList").innerHTML = data.matches.map(m => {
+        const home = data.teams.find(t => t.id === m.home);
+        const away = data.teams.find(t => t.id === m.away);
+        return `
+            <div class="card">
+                ${home?.name} vs ${away?.name}<br>
+                Score: ${m.score}<br>
+                Status: ${m.status}
+            </div>
+        `;
+    }).join("");
+}
+
+/* =========================
+   INIT
+========================= */
+document.addEventListener("DOMContentLoaded", () => {
+    DataStore.init();
+    renderStats();
+    renderTeams();
+    renderPlayers();
+    renderMatches();
+});
+</script>
+
+</body>
+  </html>
